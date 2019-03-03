@@ -1,0 +1,3 @@
+
+class Collector(object):
+    pass
