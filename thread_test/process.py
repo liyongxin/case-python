@@ -1,24 +1,6 @@
 # -*- coding: utf-8 -*-
-import threading
+from multiprocessing import Manager, Process
 from thread_test.collector.collector import Collector
-
-class GrabThread(threading.Thread):
-
-    def __init__(self,func,args=()):
-        super(GrabThread,self).__init__()
-        self.func = func
-        self.args = args
-        self.result = None
-
-    def run(self):
-        """run func registry by sub-class"""
-        self.result = self.func(*self.args)
-
-    def get_result(self):
-        try:
-            return self.result
-        except Exception as e:
-            return str(e)
 
 
 def get_all_subclasses(mod):
@@ -34,17 +16,18 @@ def get_all_subclasses(mod):
 
 def main():
     all_cls = get_all_subclasses(Collector)
-    threads = []
+    manager = Manager()
+    results = manager.dict()  # 多进程共享数据
+    processes = []  # 进程id
     for item, value in all_cls.items():
-        fn_collect = getattr(value, 'get_data', None)
+        fn_collect = getattr(value, 'grab', None)
         if callable(fn_collect):
-            p = GrabThread(func=fn_collect, args=(item,))
-            threads.append(p)
+            p = Process(target=fn_collect, name=item, args=(item, results))
+            processes.append(p)
             p.start()
             print("执行{0}的collect 方法".format(item))
-    for p in threads:
+    for p in processes:
         p.join()  #
-
     print("main done")
 
 if __name__ == '__main__':
